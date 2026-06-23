@@ -167,7 +167,6 @@ for penagih, group_df in groups:
             
     current_out_row += 2
 
-# --- BAGIAN AUTO-FIT KOLOM YANG SUDAH DIPERBAIKI ---
 sel_tergabung = set()
 for rentang in ws_out.merged_cells.ranges:
     for baris in range(rentang.min_row, rentang.max_row + 1):
