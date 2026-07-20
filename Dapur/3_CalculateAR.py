@@ -214,7 +214,7 @@ for indeks_baris in range(1, ws_out.max_row + 1):
             break
             
     if baris_ttd:
-        ws_out.row_dimensions[indeks_baris].height = 130
+        ws_out.row_dimensions[indeks_baris].height = 120
 
 wb_out.save('Print_AR.xlsx')
 print("--> Proses selesai, file telah disimpan sebagai Print_AR.xlsx")
