@@ -1,4 +1,0 @@
-1. Gunakan: kolom_diambil = ['Kode', 'Nama Pelanggan', 'Umur JT', 'No. Faktur', 'Tgl Faktur', 'Nilai Faktur', 'Sisa Piutang']
-2. Template pindah ke xlsm dengan tambahan kode VBA untuk print
-3. Tes perubahan, print dan unggah ke SS
-4. Ganti readme
