@@ -1,5 +1,6 @@
 import sys
 import traceback
+import datetime
 import openpyxl
 import gspread
 from google.oauth2.service_account import Credentials
@@ -8,6 +9,13 @@ def normalize_text(text):
     if not text:
         return ""
     return " ".join(str(text).strip().lower().split())
+
+def format_value(val):
+    if val is None:
+        return ""
+    if isinstance(val, (datetime.datetime, datetime.date)):
+        return val.strftime('%d/%m/%Y')
+    return val
 
 config = {}
 current_key = None
@@ -38,19 +46,19 @@ try:
         if col_a is not None and str(col_a).strip() != "":
             baris_baru = [
                 config.get('PERUSAHAAN', ''),
-                str(ws.cell(row=row, column=1).value) if ws.cell(row=row, column=1).value is not None else "",
+                format_value(ws.cell(row=row, column=1).value),
                 config.get('DIVISI', ''),
                 config.get('TANGGAL', ''),
                 config.get('INPUT', ''),
-                ws.cell(row=row, column=2).value if ws.cell(row=row, column=2).value is not None else "",
-                ws.cell(row=row, column=3).value if ws.cell(row=row, column=3).value is not None else "",
-                ws.cell(row=row, column=4).value if ws.cell(row=row, column=4).value is not None else "",
-                ws.cell(row=row, column=5).value if ws.cell(row=row, column=5).value is not None else "",
-                ws.cell(row=row, column=6).value if ws.cell(row=row, column=6).value is not None else "",
-                ws.cell(row=row, column=7).value if ws.cell(row=row, column=7).value is not None else "",
-                ws.cell(row=row, column=8).value if ws.cell(row=row, column=8).value is not None else "",
-                ws.cell(row=row, column=9).value if ws.cell(row=row, column=9).value is not None else "",
-                ws.cell(row=row, column=10).value if ws.cell(row=row, column=10).value is not None else ""
+                format_value(ws.cell(row=row, column=2).value),
+                format_value(ws.cell(row=row, column=3).value),
+                format_value(ws.cell(row=row, column=4).value),
+                format_value(ws.cell(row=row, column=5).value),
+                format_value(ws.cell(row=row, column=6).value),
+                format_value(ws.cell(row=row, column=7).value),
+                format_value(ws.cell(row=row, column=8).value),
+                format_value(ws.cell(row=row, column=9).value),
+                format_value(ws.cell(row=row, column=10).value)
             ]
             data_to_insert.append(baris_baru)
             
