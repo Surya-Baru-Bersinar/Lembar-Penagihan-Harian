@@ -173,11 +173,22 @@ for rentang in ws_out.merged_cells.ranges:
         for kolom in range(rentang.min_col, rentang.max_col + 1):
             sel_tergabung.add((baris, kolom))
 
+lebar_spesifik = {
+    'I': 39,
+    'J': 39,
+    'K': 28,
+    'L': 37,
+    'M': 28,
+    'N': 37,
+    'O': 37,
+    'P': 30
+}
+
 for c_idx in range(1, ws_out.max_column + 1):
     huruf_kolom = get_column_letter(c_idx)
     
-    if 9 <= c_idx <= 16:
-        ws_out.column_dimensions[huruf_kolom].width = 37
+    if huruf_kolom in lebar_spesifik:
+        ws_out.column_dimensions[huruf_kolom].width = lebar_spesifik[huruf_kolom]
         continue
         
     panjang_maksimal = 0
