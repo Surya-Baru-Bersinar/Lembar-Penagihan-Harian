@@ -11,10 +11,7 @@ def clean_data_autofit(input_file, output_file):
         return
         
     target_headers = [
-        "No. Faktur", "Tgl Faktur", "Kode", "Nama Pelanggan", 
-        "Negara Pelanggan", "Alamat 1 Pelanggan", "Kota Pelanggan", 
-        "Jatuh Tempo", "Nilai Faktur", "Sisa Piutang", "Umur JT", 
-        "Telepon Pelanggan", "Sales", "Area"
+        "No. Faktur", "Tgl Faktur", "Kode", "Nama Pelanggan", "Nilai Faktur", "Sisa Piutang", "Umur JT"
     ]
     
     header_map = {}

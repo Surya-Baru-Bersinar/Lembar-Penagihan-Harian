@@ -4,18 +4,26 @@ import openpyxl
 import gspread
 from google.oauth2.service_account import Credentials
 
+def normalize_text(text):
+    if not text:
+        return ""
+    return " ".join(str(text).strip().lower().split())
+
 config = {}
 current_key = None
 try:
     with open('piutang.conf', 'r') as f:
         for line in f:
             line = line.strip()
-            if not line:
+            if not line or line.startswith('#'):
                 continue
             if line.startswith('[') and line.endswith(']'):
-                current_key = line[1:-1]
+                current_key = line[1:-1].strip().upper()
             else:
-                if current_key and current_key not in config:
+                if '=' in line:
+                    k, v = line.split('=', 1)
+                    config[k.strip().upper()] = v.strip()
+                elif current_key and current_key not in config:
                     config[current_key] = line
 except Exception as e:
     print(f"--> Gagal membaca piutang.conf: {e}")
@@ -58,18 +66,33 @@ try:
     credentials = Credentials.from_service_account_file('credentials.json', scopes=scopes)
     gc = gspread.authorize(credentials)
     
-    spreadsheet_id = 'YOUR SPREADSHEETS ID'
-    
+    ss_url = config.get('URL', '')
+    if not ss_url:
+        print("--> Error: URL Google Spreadsheet tidak ditemukan di piutang.conf")
+        sys.exit()
+
     try:
-        sh = gc.open_by_key(spreadsheet_id)
+        sh = gc.open_by_url(ss_url)
     except gspread.exceptions.SpreadsheetNotFound:
-        print("--> Error: Spreadsheets tidak ditemukan. Pastikan email Service Account sudah diberi akses Editor.")
+        print("--> Error: Spreadsheets tidak ditemukan. Pastikan URL benar dan email Service Account sudah diberi akses Editor.")
+        sys.exit()
+    except Exception as e:
+        print(f"--> Error saat membuka URL Spreadsheet: {e}")
         sys.exit()
         
-    try:
-        worksheet = sh.get_worksheet_by_id(YOUR ID SPREADSHEETS)
-    except gspread.exceptions.WorksheetNotFound:
-        print("--> Error: Worksheet dengan ID tersebut tidak ditemukan.")
+    target_sheet_name = config.get('SHEET_NAME', '')
+    target_norm = normalize_text(target_sheet_name)
+    
+    worksheet = None
+    
+    for ws_item in sh.worksheets():
+        if normalize_text(ws_item.title) == target_norm:
+            worksheet = ws_item
+            break
+            
+    if worksheet is None:
+        print(f"--> Error: Sheet '{target_sheet_name}' tidak ditemukan.")
+        print("    Daftar Sheet yang tersedia di Google Sheets:", [w.title for w in sh.worksheets()])
         sys.exit()
     
     semua_nilai = worksheet.get_all_values()
@@ -79,7 +102,7 @@ try:
     if baris_sisip < 1:
         baris_sisip = 1
         
-    print(f"--> Menyiapkan {len(data_to_insert)} baris untuk disisipkan pada baris ke-{baris_sisip}...")
+    print(f"--> Menyiapkan {len(data_to_insert)} baris untuk disisipkan pada baris ke-{baris_sisip} di Sheet '{worksheet.title}'...")
     
     worksheet.insert_rows(data_to_insert, row=baris_sisip, value_input_option='USER_ENTERED')
     

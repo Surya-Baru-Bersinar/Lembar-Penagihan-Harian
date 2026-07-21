@@ -1,8 +1,5 @@
 import pandas as pd
-import openpyxl
-from copy import copy
-from openpyxl.formula.translate import Translator
-from openpyxl.utils import get_column_letter
+import xlwings as xw
 
 config = {}
 current_key = None
@@ -27,205 +24,123 @@ df = df[~df['Penagih'].astype(str).str.startswith('TOTAL', na=False)]
 df = df[df['Kode'].notna()]
 df = df[df['Kode'].astype(str).str.strip() != '']
 
-wb_temp = openpyxl.load_workbook('TEMPLATE.xlsx')
-ws_temp = wb_temp.active
+app = xw.App(visible=False)
 
-wb_out = openpyxl.Workbook()
-ws_out = wb_out.active
-ws_out.title = "Print AR"
+try:
+    wb = app.books.open('TEMPLATE.xlsm')
+    
+    ws_temp = wb.sheets.active
+    ws_temp.name = "TEMP_DESIGN"
+    
+    max_row_temp = ws_temp.range('A' + str(ws_temp.cells.last_cell.row)).end('up').row
+    if max_row_temp < 7:
+        max_row_temp = 7
 
-for col_letter, col_dim in ws_temp.column_dimensions.items():
-    ws_out.column_dimensions[col_letter].width = col_dim.width
-    ws_out.column_dimensions[col_letter].hidden = col_dim.hidden
+    ws_out = wb.sheets.add(name="Print AR", after=ws_temp)
 
-def copy_cell(source_cell, target_cell):
-    if source_cell.data_type == 'f' and source_cell.value:
-        target_cell.value = Translator(source_cell.value, source_cell.coordinate).translate_formula(target_cell.coordinate)
-    else:
-        target_cell.value = source_cell.value
+    current_out_row = 1
+    groups = df.groupby('Penagih', sort=False)
+
+    for penagih, group_df in groups:
+        start_row_for_group = current_out_row
         
-    target_cell.data_type = source_cell.data_type
-    
-    if source_cell.has_style:
-        target_cell.font = copy(source_cell.font)
-        target_cell.border = copy(source_cell.border)
-        target_cell.fill = copy(source_cell.fill)
-        target_cell.number_format = copy(source_cell.number_format)
-        target_cell.protection = copy(source_cell.protection)
-        target_cell.alignment = copy(source_cell.alignment)
-
-current_out_row = 1
-groups = df.groupby('Penagih', sort=False)
-
-for penagih, group_df in groups:
-    start_row_for_group = current_out_row
-    
-    for r in range(1, 5):
-        if r in ws_temp.row_dimensions and ws_temp.row_dimensions[r].height is not None:
-            ws_out.row_dimensions[current_out_row].height = ws_temp.row_dimensions[r].height
-        for c in range(1, ws_temp.max_column + 1):
-            copy_cell(ws_temp.cell(row=r, column=c), ws_out.cell(row=current_out_row, column=c))
-        current_out_row += 1
+        ws_temp.range('1:4').copy(ws_out.range(f'{current_out_row}:{current_out_row + 3}'))
         
-    ws_out.cell(row=start_row_for_group + 1, column=4).value = penagih
-    ws_out.cell(row=start_row_for_group + 1, column=8).value = config.get('PERUSAHAAN', '')
-    ws_out.cell(row=start_row_for_group + 1, column=11).value = config.get('DIVISI', '')
-    ws_out.cell(row=start_row_for_group + 1, column=15).value = config.get('TANGGAL', '')
-    ws_out.cell(row=start_row_for_group + 2, column=15).value = config.get('INPUT', '')
-    
-    for merged_range in ws_temp.merged_cells.ranges:
-        min_col, min_row, max_col, max_row = merged_range.bounds
-        if min_row <= 4 and max_row <= 4:
-            try:
-                ws_out.merge_cells(
-                    start_row=min_row + start_row_for_group - 1, 
-                    start_column=min_col, 
-                    end_row=max_row + start_row_for_group - 1, 
-                    end_column=max_col
-                )
-            except Exception:
-                pass
-                
-    data_start_row = current_out_row
-    nomor = 1
-    
-    for _, row_data in group_df.iterrows():
-        if 5 in ws_temp.row_dimensions and ws_temp.row_dimensions[5].height is not None:
-            ws_out.row_dimensions[current_out_row].height = ws_temp.row_dimensions[5].height
-        for c in range(1, ws_temp.max_column + 1):
-            copy_cell(ws_temp.cell(row=5, column=c), ws_out.cell(row=current_out_row, column=c))
+        ws_out.range((start_row_for_group + 1, 4)).value = penagih
+        ws_out.range((start_row_for_group + 1, 8)).value = config.get('PERUSAHAAN', '')
+        ws_out.range((start_row_for_group + 1, 11)).value = config.get('DIVISI', '')
+        ws_out.range((start_row_for_group + 1, 15)).value = config.get('TANGGAL', '')
+        ws_out.range((start_row_for_group + 2, 15)).value = config.get('INPUT', '')
+        
+        current_out_row += 4
+        data_start_row = current_out_row
+        nomor = 1
+        
+        for _, row_data in group_df.iterrows():
+            ws_temp.range('5:5').copy(ws_out.range(f'{current_out_row}:{current_out_row}'))
             
-        ws_out.cell(row=current_out_row, column=2).value = nomor
-        ws_out.cell(row=current_out_row, column=3).value = row_data.get('Kode', '')
-        ws_out.cell(row=current_out_row, column=4).value = row_data.get('Nama Pelanggan', '')
-        ws_out.cell(row=current_out_row, column=5).value = row_data.get('Umur JT', '')
-        ws_out.cell(row=current_out_row, column=6).value = row_data.get('No. Faktur', '')
-        ws_out.cell(row=current_out_row, column=7).value = row_data.get('Tgl Faktur', '')
-        
-        for col_idx, col_name in zip([8, 9, 10], ['Nilai Faktur', 'Terbayar', 'Sisa Piutang']):
-            val = row_data.get(col_name, '')
-            if pd.notna(val) and val != "":
-                ws_out.cell(row=current_out_row, column=col_idx).value = val
-            else:
-                ws_out.cell(row=current_out_row, column=col_idx).value = None
+            ws_out.range((current_out_row, 2)).value = nomor
+            ws_out.range((current_out_row, 3)).value = row_data.get('Kode', '')
+            ws_out.range((current_out_row, 4)).value = row_data.get('Nama Pelanggan', '')
+            ws_out.range((current_out_row, 5)).value = row_data.get('Umur JT', '')
+            ws_out.range((current_out_row, 6)).value = row_data.get('No. Faktur', '')
+            ws_out.range((current_out_row, 7)).value = row_data.get('Tgl Faktur', '')
+            
+            val_faktur = row_data.get('Nilai Faktur', None)
+            val_terbayar = row_data.get('Terbayar', None)
+            val_sisa = row_data.get('Sisa Piutang', None)
+            
+            ws_out.range((current_out_row, 8)).value = val_faktur if pd.notna(val_faktur) and val_faktur != "" else None
+            ws_out.range((current_out_row, 9)).value = val_terbayar if pd.notna(val_terbayar) and val_terbayar != "" else None
+            ws_out.range((current_out_row, 10)).value = val_sisa if pd.notna(val_sisa) and val_sisa != "" else None
 
-        current_out_row += 1
-        nomor += 1
-        
-    data_end_row = current_out_row - 1
-    
-    if 6 in ws_temp.row_dimensions and ws_temp.row_dimensions[6].height is not None:
-        ws_out.row_dimensions[current_out_row].height = ws_temp.row_dimensions[6].height
-    for c in range(1, ws_temp.max_column + 1):
-        copy_cell(ws_temp.cell(row=6, column=c), ws_out.cell(row=current_out_row, column=c))
-        
-    try:
-        ws_out.merge_cells(start_row=current_out_row, start_column=2, end_row=current_out_row, end_column=7)
-    except Exception:
-        pass
-        
-    ws_out.cell(row=current_out_row, column=2).value = "TOTAL TAGIHAN"
-    ws_out.cell(row=current_out_row, column=8).value = f"=SUM(H{data_start_row}:H{data_end_row})"
-    ws_out.cell(row=current_out_row, column=9).value = f"=SUM(I{data_start_row}:I{data_end_row})"
-    ws_out.cell(row=current_out_row, column=10).value = f"=SUM(J{data_start_row}:J{data_end_row})"
-    
-    for merged_range in ws_temp.merged_cells.ranges:
-        min_col, min_row, max_col, max_row = merged_range.bounds
-        if min_row == 6 and min_col != 2:
-            try:
-                ws_out.merge_cells(
-                    start_row=current_out_row, 
-                    start_column=min_col, 
-                    end_row=current_out_row + (max_row - min_row), 
-                    end_column=max_col
-                )
-            except Exception:
-                pass
-
-    current_out_row += 1
-
-    if ws_temp.max_row >= 7:
-        for r in range(7, ws_temp.max_row + 1):
-            if r in ws_temp.row_dimensions and ws_temp.row_dimensions[r].height is not None:
-                ws_out.row_dimensions[current_out_row].height = ws_temp.row_dimensions[r].height
-            for c in range(1, ws_temp.max_column + 1):
-                copy_cell(ws_temp.cell(row=r, column=c), ws_out.cell(row=current_out_row, column=c))
-                
-            for merged_range in ws_temp.merged_cells.ranges:
-                min_col, min_row, max_col, max_row = merged_range.bounds
-                if min_row == r:
-                    try:
-                        ws_out.merge_cells(
-                            start_row=current_out_row, 
-                            start_column=min_col, 
-                            end_row=current_out_row + (max_row - min_row), 
-                            end_column=max_col
-                        )
-                    except Exception:
-                        pass
             current_out_row += 1
+            nomor += 1
             
-    current_out_row += 2
-
-sel_tergabung = set()
-for rentang in ws_out.merged_cells.ranges:
-    for baris in range(rentang.min_row, rentang.max_row + 1):
-        for kolom in range(rentang.min_col, rentang.max_col + 1):
-            sel_tergabung.add((baris, kolom))
-
-lebar_spesifik = {
-    'I': 39,
-    'J': 39,
-    'K': 28,
-    'L': 37,
-    'M': 28,
-    'N': 37,
-    'O': 37,
-    'P': 30
-}
-
-for c_idx in range(1, ws_out.max_column + 1):
-    huruf_kolom = get_column_letter(c_idx)
-    
-    if huruf_kolom in lebar_spesifik:
-        ws_out.column_dimensions[huruf_kolom].width = lebar_spesifik[huruf_kolom]
-        continue
+        data_end_row = current_out_row - 1
         
-    panjang_maksimal = 0
+        ws_temp.range('6:6').copy(ws_out.range(f'{current_out_row}:{current_out_row}'))
+        
+        ws_out.range((current_out_row, 2)).value = "TOTAL TAGIHAN"
+        ws_out.range((current_out_row, 8)).formula = f"=SUM(H{data_start_row}:H{data_end_row})"
+        ws_out.range((current_out_row, 9)).formula = f"=SUM(I{data_start_row}:I{data_end_row})"
+        ws_out.range((current_out_row, 10)).formula = f"=SUM(J{data_start_row}:J{data_end_row})"
+        
+        current_out_row += 1
+        
+        if max_row_temp >= 7:
+            jumlah_baris_footer = max_row_temp - 7 + 1
+            ws_temp.range(f'7:{max_row_temp}').copy(ws_out.range(f'{current_out_row}:{current_out_row + jumlah_baris_footer - 1}'))
+            current_out_row += jumlah_baris_footer
+            
+        current_out_row += 2
+
+    ws_out.autofit('c')
     
-    for r_idx in range(1, ws_out.max_row + 1):
-        if (r_idx, c_idx) in sel_tergabung:
-            continue
-            
-        cell = ws_out.cell(row=r_idx, column=c_idx)
-        if cell.value is not None:
-            if isinstance(cell.value, (int, float)):
-                nilai_teks = f"{cell.value:,.2f}"
-            else:
-                nilai_teks = str(cell.value)
-                
-            if len(nilai_teks) > panjang_maksimal:
-                panjang_maksimal = len(nilai_teks)
-                
-    if panjang_maksimal > 0:
-        lebar_sekarang = ws_out.column_dimensions[huruf_kolom].width
-        if lebar_sekarang is None:
-            lebar_sekarang = 37
-            
-        lebar_disesuaikan = panjang_maksimal + 2.5
-        if lebar_disesuaikan > lebar_sekarang:
-            ws_out.column_dimensions[huruf_kolom].width = lebar_disesuaikan
+    lebar_spesifik = {
+        'F': 30,
+        'G': 30,
+        'H': 37,        
+        'I': 37,
+        'J': 37,
+        'K': 28,
+        'L': 34,
+        'M': 28,
+        'N': 37,
+        'O': 37,
+        'P': 30
+    }
+    for col_letter, width in lebar_spesifik.items():
+        ws_out.range(f'{col_letter}1').column_width = width
 
-for indeks_baris in range(1, ws_out.max_row + 1):
-    baris_ttd = False
-    for indeks_kolom in range(1, ws_out.max_column + 1):
-        nilai_sel = ws_out.cell(row=indeks_baris, column=indeks_kolom).value
-        if isinstance(nilai_sel, str) and "TTD SALES & COLLECTOR" in nilai_sel:
-            baris_ttd = True
-            break
-            
-    if baris_ttd:
-        ws_out.row_dimensions[indeks_baris].height = 120
+    for r in range(1, current_out_row + 1):
+        vals = ws_out.range((r, 1), (r, 16)).value
+        if vals:
+            for val in vals:
+                if isinstance(val, str) and "TTD SALES & COLLECTOR" in val:
+                    ws_out.range(f'{r}:{r}').row_height = 115
+                    break
 
-wb_out.save('Print_AR.xlsx')
-print("--> Proses selesai, file telah disimpan sebagai Print_AR.xlsx")
+    if len(ws_temp.shapes) > 0:
+        for shape in ws_temp.shapes:
+            orig_top = shape.top
+            orig_left = shape.left
+            
+            shape.api.Copy()
+            ws_out.activate()
+            ws_out.api.Paste()
+            
+            new_shape = ws_out.shapes[-1]
+            new_shape.top = orig_top
+            new_shape.left = orig_left
+
+    app.display_alerts = False
+    ws_temp.delete()
+    app.display_alerts = True
+
+    wb.save('Print_AR.xlsm')
+    wb.close()
+    print("--> Proses selesai, file telah disimpan sebagai Print_AR.xlsm")
+
+finally:
+    app.quit()
