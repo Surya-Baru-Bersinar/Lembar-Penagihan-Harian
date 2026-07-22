@@ -2,25 +2,39 @@ import configparser
 import os
 import pandas as pd
 
-def find_header_and_read(file_path, sheet_name, required_cols):
+def find_header_and_read(file_path, sheet_name, required_cols_options):
     sheet_target = sheet_name if sheet_name else 0
     df_raw = pd.read_excel(file_path, sheet_name=sheet_target, header=None)
     
     header_idx = None
+    matched_cols = []
+    
     for idx, row in df_raw.iterrows():
         row_values = [str(val).strip() for val in row.dropna().values]
-        if all(col in row_values for col in required_cols):
+        
+        temp_matched = []
+        for col_opts in required_cols_options:
+            if isinstance(col_opts, list):
+                found = next((c for c in col_opts if c in row_values), None)
+                if found:
+                    temp_matched.append(found)
+            else:
+                if col_opts in row_values:
+                    temp_matched.append(col_opts)
+                    
+        if len(temp_matched) == len(required_cols_options):
             header_idx = idx
+            matched_cols = temp_matched
             break
             
     if header_idx is None:
         raise ValueError(
-            f"Kolom {required_cols} tidak ditemukan pada sheet '{sheet_target}' di file {file_path}."
+            f"Kolom {required_cols_options} tidak ditemukan pada sheet '{sheet_target}' di file {file_path}."
         )
     
     df = pd.read_excel(file_path, sheet_name=sheet_target, header=header_idx)
     df.columns = df.columns.astype(str).str.strip()
-    return df
+    return df, matched_cols
 
 def process_piutang():
     config_file = 'piutang.conf'
@@ -60,10 +74,10 @@ def process_piutang():
         return
 
     print(f"--> Membaca {master_file}...")
-    df_master = find_header_and_read(
+    df_master, _ = find_header_and_read(
         file_path=master_file,
         sheet_name=mas_sheet,
-        required_cols=[mas_col_key, mas_col_ret]
+        required_cols_options=[mas_col_key, mas_col_ret]
     )
 
     lookup_dict = {}
@@ -79,14 +93,18 @@ def process_piutang():
     print(f"--> Berhasil memuat {len(lookup_dict)} data acuan dari Master.")
 
     print(f"--> Membaca {export_file}...")
-    target_key_col = "Kode"
-    target_val_col = "Nama Pelanggan"
+    
+    key_options = ["Kode Pelanggan", "Kode"]
+    val_options = "Nama Pelanggan"
 
-    df_target = find_header_and_read(
+    df_target, matched_cols = find_header_and_read(
         file_path=export_file,
         sheet_name=0,
-        required_cols=[target_key_col, target_val_col]
+        required_cols_options=[key_options, val_options]
     )
+
+    target_key_col = matched_cols[0]
+    target_val_col = matched_cols[1]
 
     updated_count = 0
     

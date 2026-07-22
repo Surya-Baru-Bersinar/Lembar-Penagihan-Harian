@@ -17,24 +17,45 @@ def format_value(val):
         return val.strftime('%d/%m/%Y')
     return val
 
-config = {}
-current_key = None
-try:
-    with open('piutang.conf', 'r') as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith('#'):
-                continue
-            if line.startswith('[') and line.endswith(']'):
-                current_key = line[1:-1].strip().upper()
-            else:
-                if '=' in line:
-                    k, v = line.split('=', 1)
-                    config[k.strip().upper()] = v.strip()
-                elif current_key and current_key not in config:
-                    config[current_key] = line
-except Exception as e:
-    print(f"--> Gagal membaca piutang.conf: {e}")
+def baca_konfigurasi(filepath='piutang.conf'):
+    config = {}
+    current_section = None
+    
+    try:
+        with open(filepath, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                
+                if line.startswith('[') and line.endswith(']'):
+                    current_section = line[1:-1].strip().upper()
+                    if current_section not in config:
+                        config[current_section] = {}
+                else:
+                    if current_section is not None:
+                        if '=' in line:
+                            k, v = line.split('=', 1)
+                            config[current_section][k.strip().upper()] = v.strip()
+                        else:
+                            if 'VALUE' in config[current_section]:
+                                config[current_section]['VALUE'] += '\n' + line
+                            else:
+                                config[current_section]['VALUE'] = line
+    except Exception as e:
+        print(f"--> Gagal membaca {filepath}: {e}")
+        sys.exit(1)
+        
+    return config
+
+config = baca_konfigurasi('piutang.conf')
+perusahaan = config.get('PERUSAHAAN', {}).get('VALUE', '')
+divisi = config.get('DIVISI', {}).get('VALUE', '')
+tanggal = config.get('TANGGAL', {}).get('VALUE', '')
+input_user = config.get('INPUT', {}).get('VALUE', '')
+
+ss_url = config.get('SS', {}).get('URL', '')
+target_sheet_name = config.get('SS', {}).get('SHEET_NAME', '')
 
 try:
     wb = openpyxl.load_workbook('Print_AR_temp.xlsx', data_only=True)
@@ -45,11 +66,11 @@ try:
         col_a = ws.cell(row=row, column=1).value
         if col_a is not None and str(col_a).strip() != "":
             baris_baru = [
-                config.get('PERUSAHAAN', ''),
+                perusahaan,
                 format_value(ws.cell(row=row, column=1).value),
-                config.get('DIVISI', ''),
-                config.get('TANGGAL', ''),
-                config.get('INPUT', ''),
+                divisi,
+                tanggal,
+                input_user,
                 format_value(ws.cell(row=row, column=2).value),
                 format_value(ws.cell(row=row, column=3).value),
                 format_value(ws.cell(row=row, column=4).value),
@@ -74,9 +95,8 @@ try:
     credentials = Credentials.from_service_account_file('credentials.json', scopes=scopes)
     gc = gspread.authorize(credentials)
     
-    ss_url = config.get('URL', '')
     if not ss_url:
-        print("--> Error: URL Google Spreadsheet tidak ditemukan di piutang.conf")
+        print("--> Error: URL Google Spreadsheet pada section [SS] tidak ditemukan di piutang.conf")
         sys.exit()
 
     try:
@@ -88,7 +108,6 @@ try:
         print(f"--> Error saat membuka URL Spreadsheet: {e}")
         sys.exit()
         
-    target_sheet_name = config.get('SHEET_NAME', '')
     target_norm = normalize_text(target_sheet_name)
     
     worksheet = None
