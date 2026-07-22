@@ -29,7 +29,7 @@ def process_piutang():
         print(f"--> File konfigurasi '{config_file}' tidak ditemukan.")
         return
 
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(allow_no_value=True, strict=False)
     config.read(config_file)
     
     if 'MASTER' not in config:

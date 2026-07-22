@@ -1,4 +1,4 @@
-import piutangparser
+import configparser
 import requests
 import os
 
@@ -25,7 +25,7 @@ def download_sheet(url, output_name):
         print(f"--> Gagal mengunduh {output_name}: {e}")
 
 def main():
-    piutang = piutangparser.piutangParser(allow_no_value=True)
+    piutang = configparser.ConfigParser(allow_no_value=True, strict=False)
     piutang_file = 'piutang.conf'
     
     if not os.path.exists(piutang_file):
@@ -40,10 +40,10 @@ def main():
 
     for section, output_name in mapping.items():
         if piutang.has_section(section):
-            masdatus = piutang.get(section, 'masdatus') if piutang.has_option(section, 'masdatus') else ''
+            masdatus = piutang.get(section, 'masdatus', fallback='')
             
             if str(masdatus).strip().lower() == 'ya':
-                url = piutang.get(section, 'url') if piutang.has_option(section, 'url') else ''
+                url = piutang.get(section, 'url', fallback='')
                 download_sheet(url, output_name)
             else:
                 print(f"--> Status masdatus pada [{section}] bernilai '{masdatus}'. Proses untuk {output_name} dilewati.")
