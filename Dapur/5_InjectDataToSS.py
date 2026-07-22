@@ -112,7 +112,7 @@ try:
         
     print(f"--> Menyiapkan {len(data_to_insert)} baris untuk disisipkan pada baris ke-{baris_sisip} di Sheet '{worksheet.title}'...")
     
-    worksheet.insert_rows(data_to_insert, row=baris_sisip, value_input_option='USER_ENTERED')
+    worksheet.insert_rows(data_to_insert, row=baris_sisip, value_input_option='USER_ENTERED', inherit_from_before=True)
     
     print("--> Proses selesai, data berhasil disisipkan ke Spreadsheets dengan format bawaan.")
     
