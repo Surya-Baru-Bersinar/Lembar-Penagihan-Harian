@@ -77,6 +77,6 @@ def bersihkan_baris(file_input, file_output):
         print(f"--> Error saat memproses file: {e}")
 
 if __name__ == "__main__":
-    file_input = 'Print_AR.xlsx'
+    file_input = 'Print_AR.xlsm'
     file_output = 'Print_AR_temp.xlsx'
     bersihkan_baris(file_input, file_output)

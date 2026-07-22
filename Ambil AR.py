@@ -52,7 +52,7 @@ def jalankan_otomatisasi():
     print("--> Memulai eksekusi menyalin dan menyusun data pada template")
     subprocess.run([sys.executable, "3_CalculateAR.py"], cwd=folder_dapur)
 
-    file_laporan = glob.glob(os.path.join(folder_dapur, "*AR.xlsx"))
+    file_laporan = glob.glob(os.path.join(folder_dapur, "*AR.xlsm"))
     for laporan in file_laporan:
         nama_file = os.path.basename(laporan)
         shutil.copy2(laporan, nama_file)
@@ -65,7 +65,7 @@ def jalankan_otomatisasi():
 
     file_temp = glob.glob(os.path.join(folder_dapur, "*temp.xlsx"))
     file_export = glob.glob(os.path.join(folder_dapur, "ExportFile.xls"))
-    file_print = glob.glob(os.path.join(folder_dapur, "Print_AR.xlsx"))
+    file_print = glob.glob(os.path.join(folder_dapur, "Print_AR.xlsm"))
 
     semua_file_dihapus = file_temp + file_export + file_print
 

@@ -1,4 +1,5 @@
 import pandas as pd
+import re
 
 map_penagih = {}
 current_sales = None
@@ -23,19 +24,41 @@ df = pd.read_excel('ExportFile_clean_temp.xlsx')
 
 kolom_diambil = ['Kode', 'Nama Pelanggan', 'Umur JT', 'No. Faktur', 'Tgl Faktur', 'Nilai Faktur', 'Sisa Piutang']
 df = df[kolom_diambil].copy()
-
 df = df[df['Kode'].isin(map_penagih.keys())].copy()
 
+indo_months_in = {
+    'Jan': 'Jan', 'Feb': 'Feb', 'Mar': 'Mar', 'Apr': 'Apr', 'Mei': 'May', 'Jun': 'Jun',
+    'Jul': 'Jul', 'Agu': 'Aug', 'Sep': 'Sep', 'Okt': 'Oct', 'Nop': 'Nov', 'Des': 'Dec',
+    'Peb': 'Feb', 'Ags': 'Aug', 
+    
+    'jan': 'Jan', 'feb': 'Feb', 'mar': 'Mar', 'apr': 'Apr', 'mei': 'May', 'jun': 'Jun',
+    'jul': 'Jul', 'agu': 'Aug', 'ags': 'Aug', 'sep': 'Sep', 'okt': 'Oct', 'nop': 'Nov', 
+    'nov': 'Nov', 'des': 'Dec'
+}
+
+def konversi_bulan_indo(teks_tanggal):
+    if pd.isna(teks_tanggal):
+        return teks_tanggal
+    teks_tanggal = str(teks_tanggal)
+    for indo, eng in indo_months_in.items():
+        teks_tanggal = re.sub(r'\b' + indo + r'\b', eng, teks_tanggal)
+    return teks_tanggal
+
+tgl_bersih = df['Tgl Faktur'].apply(konversi_bulan_indo)
+
+df['Tgl_Faktur_Parsed'] = pd.to_datetime(tgl_bersih, dayfirst=True, errors='coerce')
+
+hari_ini = pd.Timestamp.now().normalize()
+df['Umur JT'] = (hari_ini - df['Tgl_Faktur_Parsed']).dt.days
+df['Tgl Faktur'] = df['Tgl_Faktur_Parsed'].dt.strftime('%d/%m/%Y')
+df = df.drop(columns=['Tgl_Faktur_Parsed'])
 df['Nilai Faktur'] = pd.to_numeric(df['Nilai Faktur'], errors='coerce').fillna(0)
 df['Sisa Piutang'] = pd.to_numeric(df['Sisa Piutang'], errors='coerce').fillna(0)
-
 df['Terbayar'] = df['Nilai Faktur'] - df['Sisa Piutang']
 
 kolom_baru = ['Kode', 'Nama Pelanggan', 'Umur JT', 'No. Faktur', 'Tgl Faktur', 'Nilai Faktur', 'Terbayar', 'Sisa Piutang']
 df = df[kolom_baru].copy()
-
 df['Penagih'] = df['Kode'].map(map_penagih)
-
 df = df.sort_values(by=['Penagih', 'Nama Pelanggan', 'Kode', 'No. Faktur'])
 
 data_akhir = []
@@ -102,4 +125,4 @@ for i, col in enumerate(df_hasil.columns):
 
 writer.close()
 
-print("--> Proses selesai, file telah disimpan sebagai Laporan_Piutang_Penagih_temp.xlsx")
+print("--> Proses selesai!")

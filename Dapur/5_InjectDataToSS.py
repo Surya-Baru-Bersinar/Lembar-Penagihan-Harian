@@ -1,8 +1,21 @@
 import sys
 import traceback
+import datetime
 import openpyxl
 import gspread
 from google.oauth2.service_account import Credentials
+
+def normalize_text(text):
+    if not text:
+        return ""
+    return " ".join(str(text).strip().lower().split())
+
+def format_value(val):
+    if val is None:
+        return ""
+    if isinstance(val, (datetime.datetime, datetime.date)):
+        return val.strftime('%d/%m/%Y')
+    return val
 
 config = {}
 current_key = None
@@ -10,12 +23,15 @@ try:
     with open('piutang.conf', 'r') as f:
         for line in f:
             line = line.strip()
-            if not line:
+            if not line or line.startswith('#'):
                 continue
             if line.startswith('[') and line.endswith(']'):
-                current_key = line[1:-1]
+                current_key = line[1:-1].strip().upper()
             else:
-                if current_key and current_key not in config:
+                if '=' in line:
+                    k, v = line.split('=', 1)
+                    config[k.strip().upper()] = v.strip()
+                elif current_key and current_key not in config:
                     config[current_key] = line
 except Exception as e:
     print(f"--> Gagal membaca piutang.conf: {e}")
@@ -30,19 +46,19 @@ try:
         if col_a is not None and str(col_a).strip() != "":
             baris_baru = [
                 config.get('PERUSAHAAN', ''),
-                str(ws.cell(row=row, column=1).value) if ws.cell(row=row, column=1).value is not None else "",
+                format_value(ws.cell(row=row, column=1).value),
                 config.get('DIVISI', ''),
                 config.get('TANGGAL', ''),
                 config.get('INPUT', ''),
-                ws.cell(row=row, column=2).value if ws.cell(row=row, column=2).value is not None else "",
-                ws.cell(row=row, column=3).value if ws.cell(row=row, column=3).value is not None else "",
-                ws.cell(row=row, column=4).value if ws.cell(row=row, column=4).value is not None else "",
-                ws.cell(row=row, column=5).value if ws.cell(row=row, column=5).value is not None else "",
-                ws.cell(row=row, column=6).value if ws.cell(row=row, column=6).value is not None else "",
-                ws.cell(row=row, column=7).value if ws.cell(row=row, column=7).value is not None else "",
-                ws.cell(row=row, column=8).value if ws.cell(row=row, column=8).value is not None else "",
-                ws.cell(row=row, column=9).value if ws.cell(row=row, column=9).value is not None else "",
-                ws.cell(row=row, column=10).value if ws.cell(row=row, column=10).value is not None else ""
+                format_value(ws.cell(row=row, column=2).value),
+                format_value(ws.cell(row=row, column=3).value),
+                format_value(ws.cell(row=row, column=4).value),
+                format_value(ws.cell(row=row, column=5).value),
+                format_value(ws.cell(row=row, column=6).value),
+                format_value(ws.cell(row=row, column=7).value),
+                format_value(ws.cell(row=row, column=8).value),
+                format_value(ws.cell(row=row, column=9).value),
+                format_value(ws.cell(row=row, column=10).value)
             ]
             data_to_insert.append(baris_baru)
             
@@ -58,18 +74,33 @@ try:
     credentials = Credentials.from_service_account_file('credentials.json', scopes=scopes)
     gc = gspread.authorize(credentials)
     
-    spreadsheet_id = 'YOUR SPREADSHEETS ID'
-    
+    ss_url = config.get('URL', '')
+    if not ss_url:
+        print("--> Error: URL Google Spreadsheet tidak ditemukan di piutang.conf")
+        sys.exit()
+
     try:
-        sh = gc.open_by_key(spreadsheet_id)
+        sh = gc.open_by_url(ss_url)
     except gspread.exceptions.SpreadsheetNotFound:
-        print("--> Error: Spreadsheets tidak ditemukan. Pastikan email Service Account sudah diberi akses Editor.")
+        print("--> Error: Spreadsheets tidak ditemukan. Pastikan URL benar dan email Service Account sudah diberi akses Editor.")
+        sys.exit()
+    except Exception as e:
+        print(f"--> Error saat membuka URL Spreadsheet: {e}")
         sys.exit()
         
-    try:
-        worksheet = sh.get_worksheet_by_id(YOUR ID SPREADSHEETS)
-    except gspread.exceptions.WorksheetNotFound:
-        print("--> Error: Worksheet dengan ID tersebut tidak ditemukan.")
+    target_sheet_name = config.get('SHEET_NAME', '')
+    target_norm = normalize_text(target_sheet_name)
+    
+    worksheet = None
+    
+    for ws_item in sh.worksheets():
+        if normalize_text(ws_item.title) == target_norm:
+            worksheet = ws_item
+            break
+            
+    if worksheet is None:
+        print(f"--> Error: Sheet '{target_sheet_name}' tidak ditemukan.")
+        print("    Daftar Sheet yang tersedia di Google Sheets:", [w.title for w in sh.worksheets()])
         sys.exit()
     
     semua_nilai = worksheet.get_all_values()
@@ -79,9 +110,9 @@ try:
     if baris_sisip < 1:
         baris_sisip = 1
         
-    print(f"--> Menyiapkan {len(data_to_insert)} baris untuk disisipkan pada baris ke-{baris_sisip}...")
+    print(f"--> Menyiapkan {len(data_to_insert)} baris untuk disisipkan pada baris ke-{baris_sisip} di Sheet '{worksheet.title}'...")
     
-    worksheet.insert_rows(data_to_insert, row=baris_sisip, value_input_option='USER_ENTERED')
+    worksheet.insert_rows(data_to_insert, row=baris_sisip, value_input_option='USER_ENTERED', inherit_from_before=True)
     
     print("--> Proses selesai, data berhasil disisipkan ke Spreadsheets dengan format bawaan.")
     
