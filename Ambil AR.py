@@ -6,7 +6,7 @@ import sys
 
 def jalankan_otomatisasi():
     folder_dapur = "Dapur"
-    file_syarat = ["__init__.py", "1_CleanerAcc.py", "2_FilterAR.py", "3_CalculateAR.py", "4_HelperCleaningData.py", "5_InjectDataToSS.py", "credentials.json", "piutang.conf"]
+    file_syarat = ["__init__.py", "1_CleanerAcc.py", "1B_DownloaderMasterData.py", "1C_MergedMaster2Main.py", "2_FilterAR.py", "3_CalculateAR.py", "4_HelperCleaningData.py", "5_InjectDataToSS.py", "credentials.json", "piutang.conf"]
     
     if not os.path.exists(folder_dapur) or not os.path.isdir(folder_dapur):
         print("--> Folder Dapur tidak ditemukan.")
