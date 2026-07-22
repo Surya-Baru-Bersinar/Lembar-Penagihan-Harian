@@ -1,82 +1,89 @@
-import os
-import glob
+import sys
 import shutil
 import subprocess
-import sys
+from pathlib import Path
+
+FOLDER_DAPUR = Path("Dapur")
+
+FILE_SYARAT = [
+    "__init__.py",
+    "1_CleanerAcc.py",
+    "1B_DownloaderMasterData.py",
+    "1C_MergedMaster2Main.py",
+    "1D_CleanZeroAR.py",
+    "2_FilterAR.py",
+    "3_CalculateAR.py",
+    "4_HelperCleaningData.py",
+    "5_InjectDataToSS.py",
+    "credentials.json",
+    "piutang.conf",
+]
+
+ALUR_EKSEKUSI = [
+    ("1_CleanerAcc.py", "Memulai eksekusi pembersihan data utama"),
+    ("1B_DownloaderMasterData.py", "Memulai pengunduhan data master"),
+    ("1C_MergedMaster2Main.py", "Memulai penggabungan data master ke data utama"),
+    ("1D_CleanZeroAR.py", "Memulai pembersihan saldo piutang nol (Zero AR)"),
+    ("2_FilterAR.py", "Memulai eksekusi filter data sementara"),
+    ("3_CalculateAR.py", "Memulai eksekusi menyalin dan menyusun data pada template"),
+    ("4_HelperCleaningData.py", "Memulai persiapan data untuk disusun ke Spreadsheets"),
+    ("5_InjectDataToSS.py", "Memulai unggah data ke Spreadsheets"),
+]
+
+def bersihkan_file_sementara(folder: Path, pola_file: list[str]) -> None:
+    for pola in pola_file:
+        for file_path in folder.glob(pola):
+            try:
+                file_path.unlink()
+            except Exception:
+                pass
+
+
+def salin_laporan_ar(folder_sumber: Path) -> None:
+    for file_laporan in folder_sumber.glob("*AR.xlsm"):
+        shutil.copy2(file_laporan, file_laporan.name)
 
 def jalankan_otomatisasi():
-    folder_dapur = "Dapur"
-    file_syarat = ["__init__.py", "1_CleanerAcc.py", "1B_DownloaderMasterData.py", "1C_MergedMaster2Main.py", "2_FilterAR.py", "3_CalculateAR.py", "4_HelperCleaningData.py", "5_InjectDataToSS.py", "credentials.json", "piutang.conf"]
-    
-    if not os.path.exists(folder_dapur) or not os.path.isdir(folder_dapur):
+    if not FOLDER_DAPUR.is_dir():
         print("--> Folder Dapur tidak ditemukan.")
         input("--> Tekan enter untuk keluar.")
         return
 
-    for file in file_syarat:
-        jalur_file = os.path.join(folder_dapur, file)
-        if not os.path.isfile(jalur_file):
-            print(f"--> File {file} tidak ditemukan di dalam folder Dapur.")
+    for nama_file in FILE_SYARAT:
+        jalur_file = FOLDER_DAPUR / nama_file
+        if not jalur_file.is_file():
+            print(f"--> File {nama_file} tidak ditemukan di dalam folder Dapur.")
             input("--> Tekan enter untuk keluar.")
             return
 
-    file_temp = glob.glob(os.path.join(folder_dapur, "*temp.xlsx"))
-    file_export = glob.glob(os.path.join(folder_dapur, "ExportFile.xls"))
+    bersihkan_file_sementara(FOLDER_DAPUR, ["*temp.xlsx", "ExportFile.xls"])
 
-    semua_file_lama = file_temp + file_export
-
-    for file in semua_file_lama:
-        try:
-            os.remove(file)
-        except Exception:
-            pass
-
-    file_sumber = ["ExportFile.xls"]
-    ada_file_dipindah = False
-    for file in file_sumber:
-        if os.path.isfile(file):
-            shutil.copy2(file, os.path.join(folder_dapur, file))
-            ada_file_dipindah = True
-
-    if not ada_file_dipindah:
+    file_export_sumber = Path("ExportFile.xls")
+    if file_export_sumber.is_file():
+        shutil.copy2(file_export_sumber, FOLDER_DAPUR / file_export_sumber.name)
+    else:
         print("--> File ExportFile.xls tidak ditemukan untuk diproses.")
         input("--> Tekan enter untuk keluar.")
         return
 
-    print("--> Memulai eksekusi pembersihan data")
-    subprocess.run([sys.executable, "1_CleanerAcc.py"], cwd=folder_dapur)
+    try:
+        for skrip, pesan in ALUR_EKSEKUSI:
+            print(f"--> {pesan}")
+            subprocess.run([sys.executable, skrip], cwd=FOLDER_DAPUR, check=True)
 
-    print("--> Memulai eksekusi filter data sementara")
-    subprocess.run([sys.executable, "2_FilterAR.py"], cwd=folder_dapur)
-    
-    print("--> Memulai eksekusi menyalin dan menyusun data pada template")
-    subprocess.run([sys.executable, "3_CalculateAR.py"], cwd=folder_dapur)
+            if skrip == "3_CalculateAR.py":
+                salin_laporan_ar(FOLDER_DAPUR)
 
-    file_laporan = glob.glob(os.path.join(folder_dapur, "*AR.xlsm"))
-    for laporan in file_laporan:
-        nama_file = os.path.basename(laporan)
-        shutil.copy2(laporan, nama_file)
-        
-    print("--> Memulai persiapan data untuk di susun ke Spreadsheets")
-    subprocess.run([sys.executable, "4_HelperCleaningData.py"], cwd=folder_dapur)
-    
-    print("--> Memulai unggah data ke Spreadsheets")
-    subprocess.run([sys.executable, "5_InjectDataToSS.py"], cwd=folder_dapur)
+    except subprocess.CalledProcessError as err:
+        print(f"\n[ERROR] Terjadi kesalahan saat menjalankan skrip.")
+        input("--> Tekan enter untuk keluar.")
+        return
 
-    file_temp = glob.glob(os.path.join(folder_dapur, "*temp.xlsx"))
-    file_export = glob.glob(os.path.join(folder_dapur, "ExportFile.xls"))
-    file_print = glob.glob(os.path.join(folder_dapur, "Print_AR.xlsm"))
+    bersihkan_file_sementara(FOLDER_DAPUR, ["*temp.xlsx", "ExportFile.xls", "Print_AR.xlsm"])
 
-    semua_file_dihapus = file_temp + file_export + file_print
-
-    for file in semua_file_dihapus:
-        try:
-            os.remove(file)
-        except Exception:
-            pass
-            
     print("--> Semua proses telah selesai dijalankan.")
     input("--> Tekan enter untuk keluar.")
+
 
 if __name__ == "__main__":
     jalankan_otomatisasi()
