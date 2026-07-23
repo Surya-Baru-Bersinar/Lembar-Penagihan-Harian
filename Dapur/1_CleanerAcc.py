@@ -47,7 +47,7 @@ def clean_data_autofit(input_file, output_file):
     header_fallbacks = {
         "No. Faktur": ["No. Faktur"],
         "Tgl Faktur": ["Tgl Faktur"],
-        "Kode": ["Kode"],
+        "Kode": ["Kode", "NOPEL"],
         "Nama Pelanggan": ["Nama Pelanggan", "Nama"],
         "Nilai Faktur": ["Nilai Faktur"],
         "Sisa Piutang": ["Sisa Piutang", "Terutang"],
