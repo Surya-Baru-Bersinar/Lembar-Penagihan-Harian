@@ -2,7 +2,7 @@
 
 > **Satu klik: ekspor AR Accurate → lembar tagihan per penagih siap cetak + inject ke Google Sheets**
 
-Pipeline Python lima langkah yang membaca ekspor daftar piutang dari Accurate (`ExportFile.xls`), mengelompokkan tagihan per **penagih/sales** sesuai mapping kode pelanggan di `piutang.conf`, menghasilkan **`Print_AR.xlsm`** — lembar tagihan per penagih berformat template resmi macro-enabled siap cetak — sekaligus menyuntikkan seluruh data ke **Google Sheets** sebagai rekap digital.
+Pipeline Python lima langkah yang membaca ekspor daftar piutang dari Accurate dari LAPORAN PIUTANG dengan nama (`ExportFile.xls`), mengelompokkan tagihan per **penagih/sales** sesuai mapping kode pelanggan di `piutang.conf`, menghasilkan **`Print_AR.xlsm`** — lembar tagihan per penagih berformat template resmi macro-enabled siap cetak — sekaligus menyuntikkan seluruh data ke **Google Sheets** sebagai rekap digital.
 
 ---
 
