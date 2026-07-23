@@ -115,6 +115,8 @@ def clean_data_autofit(input_file, output_file):
         "Nama Kontak": get_col_data("Negara Pelanggan")
     })
 
+    temp_df["No. Faktur"] = temp_df["No. Faktur"].astype(str).str.replace('INV/', '', regex=False)
+
     temp_df["Tgl Faktur"] = temp_df["Tgl Faktur"].apply(parse_tgl_faktur)
 
     def parse_to_float(val):
