@@ -19,10 +19,7 @@ except Exception as e:
 
 df = pd.read_excel('Laporan_Piutang_Penagih_temp.xlsx')
 
-df = df[df['Penagih'].notna()]
-df = df[~df['Penagih'].astype(str).str.startswith('TOTAL', na=False)]
-df = df[df['Kode'].notna()]
-df = df[df['Kode'].astype(str).str.strip() != '']
+df_data = df[df['No'].notna()].copy()
 
 app = xw.App(visible=False)
 
@@ -39,9 +36,15 @@ try:
     ws_out = wb.sheets.add(name="Print AR", after=ws_temp)
 
     current_out_row = 1
-    groups = df.groupby('Penagih', sort=False)
 
-    for penagih, group_df in groups:
+    if 'Halaman' in df_data.columns:
+        groups = df_data.groupby(['Penagih', 'Halaman'], sort=False)
+    else:
+        groups = df_data.groupby('Penagih', sort=False)
+
+    for group_keys, group_df in groups:
+        penagih = group_keys[0] if isinstance(group_keys, tuple) else group_keys
+        
         start_row_for_group = current_out_row
         
         ws_temp.range('1:4').copy(ws_out.range(f'{current_out_row}:{current_out_row + 3}'))
@@ -54,17 +57,16 @@ try:
         
         current_out_row += 4
         data_start_row = current_out_row
-        nomor = 1
         
         for _, row_data in group_df.iterrows():
             ws_temp.range('5:5').copy(ws_out.range(f'{current_out_row}:{current_out_row}'))
             
-            ws_out.range((current_out_row, 2)).value = nomor
-            ws_out.range((current_out_row, 3)).value = row_data.get('Kode', '')
-            ws_out.range((current_out_row, 4)).value = row_data.get('Nama Pelanggan', '')
-            ws_out.range((current_out_row, 5)).value = row_data.get('Umur JT', '')
-            ws_out.range((current_out_row, 6)).value = row_data.get('No. Faktur', '')
-            ws_out.range((current_out_row, 7)).value = row_data.get('Tgl Faktur', '')
+            ws_out.range((current_out_row, 2)).value = int(row_data['No']) if pd.notna(row_data['No']) else ''
+            ws_out.range((current_out_row, 3)).value = row_data.get('Kode', '') if pd.notna(row_data.get('Kode')) else ''
+            ws_out.range((current_out_row, 4)).value = row_data.get('Nama Pelanggan', '') if pd.notna(row_data.get('Nama Pelanggan')) else ''
+            ws_out.range((current_out_row, 5)).value = row_data.get('Umur JT', '') if pd.notna(row_data.get('Umur JT')) else ''
+            ws_out.range((current_out_row, 6)).value = row_data.get('No. Faktur', '') if pd.notna(row_data.get('No. Faktur')) else ''
+            ws_out.range((current_out_row, 7)).value = row_data.get('Tgl Faktur', '') if pd.notna(row_data.get('Tgl Faktur')) else ''
             
             val_faktur = row_data.get('Nilai Faktur', None)
             val_terbayar = row_data.get('Terbayar', None)
@@ -75,7 +77,6 @@ try:
             ws_out.range((current_out_row, 10)).value = val_sisa if pd.notna(val_sisa) and val_sisa != "" else None
 
             current_out_row += 1
-            nomor += 1
             
         data_end_row = current_out_row - 1
         
@@ -98,17 +99,8 @@ try:
     ws_out.autofit('c')
     
     lebar_spesifik = {
-        'F': 30,
-        'G': 30,
-        'H': 37,        
-        'I': 37,
-        'J': 37,
-        'K': 28,
-        'L': 34,
-        'M': 28,
-        'N': 37,
-        'O': 37,
-        'P': 30
+        'F': 30, 'G': 30, 'H': 37, 'I': 37, 'J': 37,
+        'K': 28, 'L': 34, 'M': 28, 'N': 37, 'O': 37, 'P': 30
     }
     for col_letter, width in lebar_spesifik.items():
         ws_out.range(f'{col_letter}1').column_width = width
@@ -140,7 +132,7 @@ try:
 
     wb.save('Print_AR.xlsm')
     wb.close()
-    print("--> Proses selesai, file telah disimpan sebagai Print_AR.xlsm")
+    print("--> Proses ekspor berhasil! File disimpan sebagai Print_AR.xlsm")
 
 finally:
     app.quit()
