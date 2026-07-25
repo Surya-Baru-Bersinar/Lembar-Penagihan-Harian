@@ -19,6 +19,9 @@ except Exception as e:
 
 df = pd.read_excel('Laporan_Piutang_Penagih_temp.xlsx')
 
+if 'Tgl Faktur' in df.columns:
+    df['Tgl Faktur'] = pd.to_datetime(df['Tgl Faktur'], dayfirst=True, errors='coerce')
+
 df_data = df[df['No'].notna()].copy()
 
 app = xw.App(visible=False)
@@ -66,7 +69,12 @@ try:
             ws_out.range((current_out_row, 4)).value = row_data.get('Nama Pelanggan', '') if pd.notna(row_data.get('Nama Pelanggan')) else ''
             ws_out.range((current_out_row, 5)).value = row_data.get('Umur JT', '') if pd.notna(row_data.get('Umur JT')) else ''
             ws_out.range((current_out_row, 6)).value = row_data.get('No. Faktur', '') if pd.notna(row_data.get('No. Faktur')) else ''
-            ws_out.range((current_out_row, 7)).value = row_data.get('Tgl Faktur', '') if pd.notna(row_data.get('Tgl Faktur')) else ''
+            
+            tgl_faktur = row_data.get('Tgl Faktur', None)
+            if pd.notna(tgl_faktur):
+                ws_out.range((current_out_row, 7)).value = tgl_faktur
+            else:
+                ws_out.range((current_out_row, 7)).value = ''
             
             val_faktur = row_data.get('Nilai Faktur', None)
             val_terbayar = row_data.get('Terbayar', None)
@@ -99,7 +107,7 @@ try:
     ws_out.autofit('c')
     
     lebar_spesifik = {
-        'F': 30, 'G': 30, 'H': 37, 'I': 37, 'J': 37,
+        'D': 75,'F': 30, 'G': 29, 'H': 35, 'I': 35, 'J': 35,
         'K': 28, 'L': 34, 'M': 28, 'N': 37, 'O': 37, 'P': 30
     }
     for col_letter, width in lebar_spesifik.items():
