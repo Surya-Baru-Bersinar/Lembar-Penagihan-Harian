@@ -15,6 +15,7 @@ FILE_SYARAT = [
     "3_CalculateAR.py",
     "4_HelperCleaningData.py",
     "5_InjectDataToSS.py",
+    "6_PrintByPython.py",
     "credentials.json",
     "piutang.conf",
 ]
@@ -28,6 +29,7 @@ ALUR_EKSEKUSI = [
     ("3_CalculateAR.py", "Memulai eksekusi menyalin dan menyusun data pada template"),
     ("4_HelperCleaningData.py", "Memulai persiapan data untuk disusun ke Spreadsheets"),
     ("5_InjectDataToSS.py", "Memulai unggah data ke Spreadsheets"),
+    ("6_PrintByPython.py", "Memulai menjalankan print otomatis dengan konfigurasi"),
 ]
 
 def bersihkan_file_sementara(folder: Path, pola_file: list[str]) -> None:
