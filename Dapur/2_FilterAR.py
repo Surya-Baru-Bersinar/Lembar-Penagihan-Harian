@@ -4,24 +4,28 @@ import re
 daftar_instruksi = []
 current_sales = None
 mode = None
+tgl_conf_str = None
 
 with open('piutang.conf', 'r') as f:
     for line in f:
         line = line.strip()
         if not line:
             continue
-        if line == '[NAMA SALES]':
-            mode = 'sales'
-        elif line == '[KODE PELANGGAN]':
-            mode = 'kode'
-        else:
-            if mode == 'sales':
-                current_sales = line
-            elif mode == 'kode' and current_sales:
-                daftar_instruksi.append({
-                    'sales': current_sales,
-                    'kode': line
-                })
+        
+        if line.startswith('[') and line.endswith(']'):
+            mode = line[1:-1].strip().upper()
+            continue
+            
+        if mode == 'TANGGAL':
+            if not tgl_conf_str:
+                tgl_conf_str = line
+        elif mode == 'NAMA SALES':
+            current_sales = line
+        elif mode == 'KODE PELANGGAN' and current_sales:
+            daftar_instruksi.append({
+                'sales': current_sales,
+                'kode': line
+            })
 
 df = pd.read_excel('ExportFile_clean_temp.xlsx')
 
@@ -51,7 +55,17 @@ def konversi_bulan_indo(teks_tanggal):
 tgl_bersih = df['Tgl Faktur'].apply(konversi_bulan_indo)
 df['Tgl_Faktur_Parsed'] = pd.to_datetime(tgl_bersih, format='mixed', errors='coerce')
 
-hari_ini = pd.Timestamp.now().normalize()
+if tgl_conf_str:
+    hari_ini = pd.to_datetime(tgl_conf_str, format='%d/%m/%Y', errors='coerce')
+    if pd.isna(hari_ini):
+        print(f"--> Warning: Format tanggal '{tgl_conf_str}' di piutang.conf tidak valid. Menggunakan tanggal hari ini.")
+        hari_ini = pd.Timestamp.now().normalize()
+else:
+    print("--> Warning: Section [TANGGAL] tidak ditemukan di piutang.conf. Menggunakan tanggal hari ini.")
+    hari_ini = pd.Timestamp.now().normalize()
+
+print(f"--> Tanggal Acuan (hari_ini) yang digunakan: {hari_ini.strftime('%d/%m/%Y')}")
+
 df['Umur JT'] = (hari_ini - df['Tgl_Faktur_Parsed']).dt.days
 df['Tgl Faktur'] = df['Tgl_Faktur_Parsed'].dt.strftime('%d/%m/%Y')
 df = df.drop(columns=['Tgl_Faktur_Parsed'])
