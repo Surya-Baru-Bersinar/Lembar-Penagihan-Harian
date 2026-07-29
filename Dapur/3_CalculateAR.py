@@ -107,8 +107,8 @@ try:
     ws_out.autofit('c')
     
     lebar_spesifik = {
-        'D': 75,'F': 30, 'G': 29, 'H': 35, 'I': 35, 'J': 35,
-        'K': 28, 'L': 34, 'M': 28, 'N': 37, 'O': 37, 'P': 30
+        'D': 75,'F': 30, 'G': 32, 'H': 35, 'I': 35, 'J': 35,
+        'K': 25, 'L': 35, 'M': 15, 'N': 37, 'O': 37, 'P': 30
     }
     for col_letter, width in lebar_spesifik.items():
         ws_out.range(f'{col_letter}1').column_width = width
