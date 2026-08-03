@@ -58,13 +58,13 @@ def jalankan_otomatisasi():
             input("--> Tekan enter untuk keluar.")
             return
 
-    bersihkan_file_sementara(FOLDER_DAPUR, ["*temp.xlsx", "ExportFile.xls"])
+    bersihkan_file_sementara(FOLDER_DAPUR, ["*temp.xlsx", "Piutang.xls"])
 
-    file_export_sumber = Path("ExportFile.xls")
+    file_export_sumber = Path("Piutang.xls")
     if file_export_sumber.is_file():
         shutil.copy2(file_export_sumber, FOLDER_DAPUR / file_export_sumber.name)
     else:
-        print("--> File ExportFile.xls tidak ditemukan untuk diproses.")
+        print("--> File Piutang.xls tidak ditemukan untuk diproses.")
         input("--> Tekan enter untuk keluar.")
         return
 
@@ -81,7 +81,7 @@ def jalankan_otomatisasi():
         input("--> Tekan enter untuk keluar.")
         return
 
-    bersihkan_file_sementara(FOLDER_DAPUR, ["*temp.xlsx", "ExportFile.xls", "Print_AR.xlsm"])
+    bersihkan_file_sementara(FOLDER_DAPUR, ["*temp.xlsx", "Piutang.xls", "Print_AR.xlsm"])
 
     print("--> Semua proses telah selesai dijalankan.")
     input("--> Tekan enter untuk keluar.")
