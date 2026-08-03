@@ -27,7 +27,7 @@ with open('piutang.conf', 'r') as f:
                 'kode': line
             })
 
-df = pd.read_excel('ExportFile_clean_temp.xlsx')
+df = pd.read_excel('Piutang_clean_temp.xlsx')
 
 if 'Kode Pelanggan' in df.columns and 'Kode' not in df.columns:
     df.rename(columns={'Kode Pelanggan': 'Kode'}, inplace=True)

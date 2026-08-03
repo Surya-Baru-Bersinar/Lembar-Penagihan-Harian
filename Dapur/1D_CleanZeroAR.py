@@ -1,6 +1,6 @@
 import openpyxl
 
-filename = "ExportFile_clean_temp.xlsx"
+filename = "Piutang_clean_temp.xlsx"
 wb = openpyxl.load_workbook(filename)
 ws = wb.active
 

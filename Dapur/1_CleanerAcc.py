@@ -194,8 +194,8 @@ def clean_data_autofit(input_file, output_file):
 
     return df_final
 
-input_filename = 'ExportFile.xls' 
-output_filename = 'ExportFile_clean_temp.xlsx'
+input_filename = 'Piutang.xls' 
+output_filename = 'Piutang_clean_temp.xlsx'
 
 if __name__ == "__main__":
     clean_data_autofit(input_filename, output_filename)

@@ -64,7 +64,7 @@ def process_piutang():
     mas_col_ret = master_cfg.get('mas_col_ret', '').strip()
 
     master_file = "Master_temp.xlsx"
-    export_file = "ExportFile_clean_temp.xlsx"
+    export_file = "Piutang_clean_temp.xlsx"
 
     if not os.path.exists(master_file):
         print(f"--> File master '{master_file}' tidak ditemukan.")
