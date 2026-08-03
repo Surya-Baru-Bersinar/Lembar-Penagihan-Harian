@@ -60,7 +60,7 @@ Sub CetakLaporanARPerBlok()
         If adaPenutup And startRow > 0 Then
             endRow = r
             
-            ws.PageSetup.PrintArea = "A" & startRow & ":P" & endRow
+            ws.PageSetup.PrintArea = "B" & startRow & ":P" & endRow
             ws.PrintOut From:=1, To:=1, Copies:=1
             
             jumlahTerhitung = jumlahTerhitung + 1
