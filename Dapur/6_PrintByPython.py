@@ -14,7 +14,7 @@ def cek_status_pprint():
         print(f"--> Peringatan: File '{nama_conf}' tidak ditemukan!")
         return False
 
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(allow_no_value=True, strict=False)
     try:
         config.read(path_conf, encoding="utf-8")
 
@@ -94,7 +94,7 @@ def tampilkan_dialog_printer():
 def cetak_laporan_ar_xlwings():
     if not cek_status_pprint():
         msg_skip = (
-            "Status PPRINT = No (atau file konfig tidak valid). Proses dicetak DILEWATI."
+            "Status PPRINT = No. Proses dicetak DILEWATI."
         )
         print(f"--> {msg_skip}")
         return
