@@ -2,7 +2,7 @@
 
 > **Satu klik: ekspor AR Accurate → lembar tagihan per penagih siap cetak + inject ke Google Sheets**
 
-Pipeline Python lima langkah yang membaca ekspor daftar piutang dari Accurate FAKTUR PENJUALAN dengan nama (`ExportFile.xls`), mengelompokkan tagihan per **penagih/sales** sesuai mapping kode pelanggan di `piutang.conf`, menghasilkan **`Print_AR.xlsm`** — lembar tagihan per penagih berformat template resmi macro-enabled siap cetak — sekaligus menyuntikkan seluruh data ke **Google Sheets** sebagai rekap digital.
+Pipeline Python lima langkah yang membaca ekspor daftar piutang dari Accurate FAKTUR PENJUALAN dengan nama (`Piutang.xls`), mengelompokkan tagihan per **penagih/sales** sesuai mapping kode pelanggan di `piutang.conf`, menghasilkan **`Print_AR.xlsm`** — lembar tagihan per penagih berformat template resmi macro-enabled siap cetak — sekaligus menyuntikkan seluruh data ke **Google Sheets** sebagai rekap digital.
 
 ---
 
@@ -45,7 +45,7 @@ Pipeline menghasilkan dua output:
 - **Auto-fit lebar kolom & tinggi baris TTD** — Kolom disesuaikan otomatis; baris yang berisi teks "TTD SALES & COLLECTOR" secara otomatis diberi tinggi 115 poin untuk area tanda tangan.
 - **Helper cleaning sebelum inject** — Langkah 4 meratakan merge cell, mengisi nama penagih ke kolom A tiap baris data, dan menghapus baris non-data sebelum dikirim ke Google Sheets.
 - **Insert sebelum baris terakhir** — Data disisipkan tepat sebelum baris terakhir sheet Google Sheets, mempertahankan baris footer/total permanen yang ada di bawah.
-- **Auto-cleanup** — Semua file sementara (`*temp.xlsx`, `ExportFile.xls`, `Print_AR.xlsm` di Dapur/) dihapus otomatis setelah seluruh proses selesai.
+- **Auto-cleanup** — Semua file sementara (`*temp.xlsx`, `Piutang.xls`, `Print_AR.xlsm` di Dapur/) dihapus otomatis setelah seluruh proses selesai.
 - **Validasi awal menyeluruh** — Sebelum memulai, orkestrator memverifikasi keberadaan folder `Dapur/` dan semua 8 file dependensi.
 
 ---
@@ -88,11 +88,11 @@ pip install pandas openpyxl xlrd xlsxwriter xlwings gspread google-auth
 📦 Ambil-AR/
 │
 ├── 📄 Ambil AR.py               ← Orkestrator utama. Jalankan ini
-├── 📄 ExportFile.xls            ← [INPUT] Ekspor piutang dari Accurate (taruh di sini)
+├── 📄 Piutang.xls            ← [INPUT] Ekspor piutang dari Accurate (taruh di sini)
 │
 └── 📁 Dapur/                    ← Folder pipeline (jangan diubah strukturnya)
     ├── 📄 __init__.py
-    ├── 📄 1_CleanerAcc.py       ← Bersihkan ExportFile.xls → ExportFile_clean_temp.xlsx
+    ├── 📄 1_CleanerAcc.py       ← Bersihkan Piutang.xls → Piutang_clean_temp.xlsx
     ├── 📄 2_FilterAR.py         ← Filter per penagih + hitung Terbayar & total
     ├── 📄 3_CalculateAR.py      ← Susun ke TEMPLATE.xlsm → Print_AR.xlsm
     ├── 📄 4_HelperCleaningData.py ← Ratakan merge, isi nama penagih, hapus non-data
@@ -111,7 +111,7 @@ pip install pandas openpyxl xlrd xlsxwriter xlwings gspread google-auth
 ### Langkah 1 — Siapkan file input
 
 1. Export laporan piutang dari **Accurate** ke format `.xls`.
-2. Simpan dengan nama **persis** `ExportFile.xls` di folder utama (sejajar dengan `Ambil AR.py`).
+2. Simpan dengan nama **persis** `Piutang.xls` di folder utama (sejajar dengan `Ambil AR.py`).
 
 File ekspor harus mengandung kolom-kolom berikut (posisi bebas, skrip mendeteksi otomatis):
 `No. Faktur`, `Tgl Faktur`, `Kode`, `Nama Pelanggan`, `Nilai Faktur`, `Sisa Piutang`, `Umur JT`
@@ -139,8 +139,8 @@ python "Ambil AR.py"
 
 ```
 --> Memulai eksekusi pembersihan data
---> Sedang memproses file: ExportFile.xls...
---> SUKSES! File tersimpan rapi di: ExportFile_clean_temp.xlsx
+--> Sedang memproses file: Piutang.xls...
+--> SUKSES! File tersimpan rapi di: Piutang_clean_temp.xlsx
 --> Proses selesai!
 --> Memulai eksekusi menyalin dan menyusun data pada template
 --> Proses selesai, file telah disimpan sebagai Print_AR.xlsm
@@ -172,22 +172,22 @@ python "Ambil AR.py"
    │         __init__.py, 1_CleanerAcc.py, 2_FilterAR.py,
    │         3_CalculateAR.py, 4_HelperCleaningData.py,
    │         5_InjectDataToSS.py, credentials.json, piutang.conf
-   │       Cek ExportFile.xls ada di folder utama
+   │       Cek Piutang.xls ada di folder utama
    │       Jika gagal → tampilkan nama file yang hilang & berhenti
    │
    ├─── Bersihkan Dapur/ dari file lama
-   │       Hapus *temp.xlsx dan ExportFile.xls sisa run sebelumnya
+   │       Hapus *temp.xlsx dan Piutang.xls sisa run sebelumnya
    │
-   ├─── Salin ExportFile.xls → Dapur/ExportFile.xls
+   ├─── Salin Piutang.xls → Dapur/Piutang.xls
    │
    ├─── [1] 1_CleanerAcc.py
-   │       Baca ExportFile.xls (header=None, scan hingga baris ke-150)
+   │       Baca Piutang.xls (header=None, scan hingga baris ke-150)
    │       Deteksi otomatis posisi 7 kolom target berdasarkan nama
    │       Buang baris: No. Faktur kosong, NaN, atau mengandung kata header
    │       Buang baris: Kode pelanggan kosong atau NaN
    │       Parse angka: Nilai Faktur & Sisa Piutang (format Indonesia/Inggris)
    │       Format angka: #,##0.00 | Auto-fit lebar kolom
-   │       Output: ExportFile_clean_temp.xlsx (sheet: Data Bersih)
+   │       Output: Piutang_clean_temp.xlsx (sheet: Data Bersih)
    │
    ├─── [2] 2_FilterAR.py
    │       Baca piutang.conf → bangun map {Kode Pelanggan: Nama Penagih}
@@ -243,7 +243,7 @@ python "Ambil AR.py"
    │       Kirim dengan inherit_from_before=True (mewarisi format baris sebelumnya)
    │
    └─── Cleanup akhir
-           Hapus *temp.xlsx, ExportFile.xls, Print_AR.xlsm dari Dapur/
+           Hapus *temp.xlsx, Piutang.xls, Print_AR.xlsm dari Dapur/
            (Print_AR.xlsm di folder utama tetap ada)
            "Semua proses telah selesai dijalankan."
 ```
@@ -254,7 +254,7 @@ python "Ambil AR.py"
 
 ### Skrip 1 — `1_CleanerAcc.py`
 
-Membaca `ExportFile.xls` tanpa asumsi posisi header. Scan tiap sel dalam 150 baris pertama untuk menemukan posisi kolom berdasarkan nama. Baris yang `No. Faktur` atau `Kode`-nya kosong, NaN, atau berisi label header ulang (seperti "Total", "Halaman", "Page") otomatis dibuang. Parser angka `parse_to_float()` menangani semua kombinasi pemisah titik/koma format lokal maupun internasional.
+Membaca `Piutang.xls` tanpa asumsi posisi header. Scan tiap sel dalam 150 baris pertama untuk menemukan posisi kolom berdasarkan nama. Baris yang `No. Faktur` atau `Kode`-nya kosong, NaN, atau berisi label header ulang (seperti "Total", "Halaman", "Page") otomatis dibuang. Parser angka `parse_to_float()` menangani semua kombinasi pemisah titik/koma format lokal maupun internasional.
 
 **7 kolom output:**
 
@@ -449,14 +449,14 @@ Setiap baris faktur disisipkan sebagai satu baris dengan **14 kolom**:
 
 ## 🛠️ Troubleshooting
 
-### ❌ `File ExportFile.xls tidak ditemukan untuk diproses`
-Pastikan file ada di folder utama dengan nama **persis** `ExportFile.xls` (bukan `.xlsx`).
+### ❌ `File Piutang.xls tidak ditemukan untuk diproses`
+Pastikan file ada di folder utama dengan nama **persis** `Piutang.xls` (bukan `.xlsx`).
 
 ### ❌ `Error: Kolom No. Faktur tidak ditemukan`
 Skrip mencari header `"No. Faktur"` dalam 150 baris pertama. Jika tidak ditemukan, kemungkinan nama kolom di ekspor Accurate berbeda atau encoding file bermasalah. Periksa nama kolom di file `.xls` secara manual.
 
 ### ❌ Semua data hilang / hasil filter kosong
-Skrip 2 hanya memproses kode yang terdaftar di `piutang.conf`. Periksa apakah kode pelanggan di `ExportFile.xls` persis sama (termasuk huruf kapital dan tanda hubung) dengan yang ada di blok `[KODE PELANGGAN]`.
+Skrip 2 hanya memproses kode yang terdaftar di `piutang.conf`. Periksa apakah kode pelanggan di `Piutang.xls` persis sama (termasuk huruf kapital dan tanda hubung) dengan yang ada di blok `[KODE PELANGGAN]`.
 
 ### ❌ `PermissionError` atau Excel tidak bisa membuka TEMPLATE.xlsm
 `TEMPLATE.xlsm` mungkin sedang terbuka di Excel, atau Excel belum terinstall. Tutup semua file Excel yang terbuka, lalu coba lagi.
@@ -483,7 +483,7 @@ Periksa `credentials.json` — pastikan berisi JSON yang valid dan `private_key`
 
 ## 📌 Catatan Penting
 
-- **`ExportFile.xls` disalin, bukan dipindahkan** — File asli di folder utama aman setelah proses.
+- **`Piutang.xls` disalin, bukan dipindahkan** — File asli di folder utama aman setelah proses.
 - **`TEMPLATE.xlsm` wajib ada dan tidak boleh diubah strukturnya** — Baris 1–4 = header, baris 5 = baris data, baris 6 = baris total, baris 7+ = footer. Jika ingin mengubah tampilan cetak, edit langsung di `TEMPLATE.xlsm`.
 - **`credentials.json` bersifat rahasia** — Tambahkan ke `.gitignore`. Jangan pernah commit ke repositori publik.
 - **`Print_AR.xlsm` di folder utama tidak dihapus** — Hanya salinan di `Dapur/` yang dihapus. File hasil cetak di folder utama tetap tersedia.
