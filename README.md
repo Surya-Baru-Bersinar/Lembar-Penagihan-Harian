@@ -5,4 +5,4 @@ Dokumentasi kunjungi alamat di bawah ini.
 
 ---
 
-*Dikembangkan oleh [ACC-TAX-REIGHTEEN]([https://github.com/ACC-TAX-REIGHTEEN](https://github.com/ACC-TAX-REIGHTEEN/Lembar-Penagihan-Harian/blob/main/)*
+*Dikembangkan oleh [ACC-TAX-REIGHTEEN](https://github.com/ACC-TAX-REIGHTEEN/Lembar-Penagihan-Harian/blob/main/README.md)*
