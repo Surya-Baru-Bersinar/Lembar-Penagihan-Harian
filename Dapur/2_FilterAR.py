@@ -22,10 +22,21 @@ with open('piutang.conf', 'r') as f:
         elif mode == 'NAMA SALES':
             current_sales = line
         elif mode == 'KODE PELANGGAN' and current_sales:
-            daftar_instruksi.append({
-                'sales': current_sales,
-                'kode': line
-            })
+            match = re.match(r'^(.*?)(?:\s*\((\d+)\))?$', line)
+            if match:
+                kode_bersih = match.group(1).strip()
+                limit_val = int(match.group(2)) if match.group(2) else None
+                daftar_instruksi.append({
+                    'sales': current_sales,
+                    'kode': kode_bersih,
+                    'limit': limit_val
+                })
+            else:
+                daftar_instruksi.append({
+                    'sales': current_sales,
+                    'kode': line,
+                    'limit': None
+                })
 
 df = pd.read_excel('Piutang_clean_temp.xlsx')
 
@@ -38,9 +49,9 @@ df = df[kolom_diambil].copy()
 indo_months_in = {
     'Jan': 'Jan', 'Feb': 'Feb', 'Mar': 'Mar', 'Apr': 'Apr', 'Mei': 'May', 'Jun': 'Jun',
     'Jul': 'Jul', 'Agu': 'Aug', 'Sep': 'Sep', 'Okt': 'Oct', 'Nop': 'Nov', 'Des': 'Dec',
-    'Peb': 'Feb', 'Ags': 'Aug', 'Agt': 'Aug',
+    'Peb': 'Feb', 'Ags': 'Aug', 'Agt': 'Aug', 'agt': 'Aug',
     'jan': 'Jan', 'feb': 'Feb', 'mar': 'Mar', 'apr': 'Apr', 'mei': 'May', 'jun': 'Jun',
-    'jul': 'Jul', 'agu': 'Aug', 'ags': 'Aug', 'agt': 'Aug', 'sep': 'Sep', 'okt': 'Oct', 'nop': 'Nov', 
+    'jul': 'Jul', 'agu': 'Aug', 'ags': 'Aug', 'sep': 'Sep', 'okt': 'Oct', 'nop': 'Nov', 
     'nov': 'Nov', 'des': 'Dec'
 }
 
@@ -68,7 +79,6 @@ print(f"--> Tanggal Acuan (hari_ini) yang digunakan: {hari_ini.strftime('%d/%m/%
 
 df['Umur JT'] = (hari_ini - df['Tgl_Faktur_Parsed']).dt.days
 df['Tgl Faktur'] = df['Tgl_Faktur_Parsed'].dt.strftime('%d/%m/%Y')
-df = df.drop(columns=['Tgl_Faktur_Parsed'])
 
 df['Nilai Faktur'] = pd.to_numeric(df['Nilai Faktur'], errors='coerce').fillna(0)
 df['Sisa Piutang'] = pd.to_numeric(df['Sisa Piutang'], errors='coerce').fillna(0)
@@ -79,6 +89,7 @@ data_terproses = []
 for item in daftar_instruksi:
     sales = item['sales']
     kode = item['kode']
+    limit = item['limit']
     
     if kode.upper() == 'KOSONG':
         baris_kosong = {
@@ -96,8 +107,15 @@ for item in daftar_instruksi:
         data_terproses.append(baris_kosong)
     else:
         df_match = df[df['Kode'] == kode].copy()
+        
+        df_match = df_match.sort_values(by='Tgl_Faktur_Parsed', ascending=True)
+        
+        if limit is not None:
+            df_match = df_match.head(limit)
+            
         for _, row in df_match.iterrows():
             row_dict = row.to_dict()
+            row_dict.pop('Tgl_Faktur_Parsed', None)
             row_dict['Penagih'] = sales
             row_dict['Is_Kosong'] = False
             data_terproses.append(row_dict)
@@ -167,7 +185,7 @@ format_uang = workbook.add_format({'num_format': '#,##0.00'})
 
 for i, col in enumerate(df_final.columns):
     panjang_maksimal = df_final[col].apply(lambda x: len(str(x))).max()
-    column_len = max(panjang_maksimal, len(col)) + 2
+    column_len = max(panjang_maksimal, len(str(col))) + 2
     
     if col in ['Nilai Faktur', 'Terbayar', 'Sisa Piutang']:
         worksheet.set_column(i, i, column_len, format_uang)
@@ -175,4 +193,4 @@ for i, col in enumerate(df_final.columns):
         worksheet.set_column(i, i, column_len)
 
 writer.close()
-print("--> Proses berhasil! Data lengkap dengan baris kosong, paginasi 17 baris, dan Rangkuman Total.")
+print("--> Proses berhasil! Data disaring berdasarkan limit, diurutkan dari tanggal faktur terlama dam paginasi 17 baris")

@@ -1,4 +1,5 @@
 from datetime import datetime
+import sys
 import time
 import pandas as pd
 import xlwings as xw
@@ -19,6 +20,12 @@ try:
 except Exception as e:
     print(f"--> Gagal membaca piutang.conf: {e}")
 
+pure_setting = config.get('PURE', '')
+if '=' in pure_setting:
+    key_name, val_name = pure_setting.split('=', 1)
+    if key_name.strip().lower() == 'pr_process' and val_name.strip().lower() == 'ya':
+        print("--> Proses di-skip karena nilai pr_process = Ya pada piutang.conf.")
+        sys.exit(0)
 tgl_config_str = config.get('TANGGAL', '')
 tgl_config_val = tgl_config_str
 
@@ -38,6 +45,9 @@ df_data = df[df['No'].notna()].copy()
 app = xw.App(visible=False)
 
 try:
+    app.display_alerts = False
+    app.screen_updating = False
+
     wb = app.books.open('TEMPLATE.xlsm')
     
     ws_temp = wb.sheets.active
@@ -120,7 +130,7 @@ try:
     ws_out.autofit('c')
     
     lebar_spesifik = {
-        'D': 75,'F': 30, 'G': 32, 'H': 35, 'I': 35, 'J': 35,
+        'D': 75, 'E': 15, 'F': 30, 'G': 32, 'H': 35, 'I': 35, 'J': 35,
         'K': 25, 'L': 35, 'M': 15, 'N': 37, 'O': 37, 'P': 30
     }
     for col_letter, width in lebar_spesifik.items():
@@ -134,36 +144,64 @@ try:
                     ws_out.range(f'{r}:{r}').row_height = 115
                     break
 
+    app.api.CutCopyMode = False
+
     if len(ws_temp.shapes) > 0:
         for shape in ws_temp.shapes:
             try:
                 orig_top = shape.top
                 orig_left = shape.left
                 
+                macro_action = None
+                try:
+                    macro_action = shape.api.OnAction
+                except Exception:
+                    pass
+
                 shape.api.Copy()
-                time.sleep(0.1)
+                time.sleep(0.15)
                 ws_out.activate()
                 ws_out.api.Paste()
-                time.sleep(0.1)
+                time.sleep(0.15)
                 
                 new_shape = ws_out.shapes[-1]
                 new_shape.top = orig_top
                 new_shape.left = orig_left
+                
+                if macro_action:
+                    try:
+                        new_shape.api.OnAction = macro_action
+                    except Exception:
+                        pass
+
             except Exception as e:
-                print(f"--> Gagal menyalin shape: {e}")
+                print(f"--> Gagal menyalin shape/tombol: {e}")
+
+    app.api.CutCopyMode = False
+    time.sleep(0.2)
 
     try:
-        app.display_alerts = False
         ws_temp.delete()
-        app.display_alerts = True
     except Exception as e:
         print(f"--> Gagal menghapus ws_temp: {e}")
+        try:
+            ws_temp.visible = False
+        except Exception:
+            pass
+
+    app.screen_updating = True
+    time.sleep(0.2)
 
     wb.save('Print_AR.xlsm')
     wb.close()
     print("--> Proses ekspor berhasil! File disimpan sebagai Print_AR.xlsm")
 
 finally:
+    try:
+        app.screen_updating = True
+        app.display_alerts = True
+    except Exception:
+        pass
     try:
         app.quit()
     except Exception:
